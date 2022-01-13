@@ -65,7 +65,7 @@ def backup():
             except:
                 print('command not working')
                 break
-def dump():
+def dump(sqlfile=None):
     info = config()
     restorehost = info['restorehost']
     restoreuser = info['restoreuser']
@@ -77,7 +77,10 @@ def dump():
     for i in databases:
         count = 3
         while count:
-            SQL_FILE = '{}-{}.sql'.format(i, times)
+            if sqlfile == None:
+                SQL_FILE = '{}-{}.sql'.format(i, times)
+            else:
+                SQL_FILE = sqlfile
             Query1 = 'drop database {};'.format(i)
             Query2 = 'create database {} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'.format(i)
             try:
