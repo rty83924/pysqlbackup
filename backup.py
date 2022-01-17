@@ -82,7 +82,7 @@ def dump(sqlfile=None):
             else:
                 SQL_FILE = sqlfile
             Query1 = 'drop database {};'.format(i)
-            Query2 = 'create database {} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'.format(i)
+            Query2 = 'create database {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci'.format(i)
             try:
                 connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
                 connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
