@@ -2,7 +2,6 @@ import time
 import os
 import pymysql
 import asyncio
-from subprocess import Popen, PIPE
 
 def connect_sql(hosts,user,passwd,port,query):
     db = pymysql.connect(
@@ -62,20 +61,24 @@ async def restore_dump(restorehost, restoreuser, restorepwd, restoreport, databa
             SQL_FILE = '{}-{}.sql'.format(databases, times)
         else:
             SQL_FILE = sqlfile
-        Query1 = 'drop database {};'.format(databases)
-        Query2 = 'create database {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci'.format(databases)
+        Query1 = 'drop database IF EXISTS {};'.format(databases)
+        Query2 = 'create database IF NOT EXISTS  {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'.format(databases)
         try:
             connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
             connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
-            if os.system('mysql --protocol=TCP -h %s -P %s -u%s -p%s --database=%s < %s/%s' 
-            % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)) == 0:
+            cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s --database=%s < %s/%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE)
+            stdout, stderr = await proc.communicate()
+            await proc.wait()
+            if proc.returncode == 0:
                 print('restore {} done'.format(SQL_FILE))
                 break
-            else:
+            if stderr:
+                print(stderr.decode())
                 count -= 1
-                if count == 0:
-                    print('restore false!')
-                break
         except:
             print('command not working')
             break
