@@ -35,7 +35,7 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     while count:
-        cmd = 'mysqldump --single-transaction --quick --hex-blob --skip-triggers --protocol=TCP --set-gtid-purged=OFF -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+        cmd = 'mysqldump --single-transaction --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
         try:
             proc = await asyncio.create_subprocess_shell(
                 cmd,
