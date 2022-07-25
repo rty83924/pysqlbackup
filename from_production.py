@@ -43,4 +43,5 @@ async def main():
     end = time.time()
     print(end - start)
 if __name__ == '__main__':
-    asyncio.run(main(),debug=True)
+    print('version: 1.5.4 laster')
+    asyncio.run(main())

@@ -34,12 +34,11 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
         os.makedirs(outputpath)
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
+    if table is None:
+        cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+    else:    
+        cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
     while count:
-        if table is None:
-            cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
-            #cmd = 'mysqldump --single-transaction --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)        
-        else:    
-            cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
         try:
             proc = await asyncio.create_subprocess_shell(
                 cmd,
@@ -47,12 +46,15 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
                 stderr=asyncio.subprocess.PIPE)
             stdout, stderr = await proc.communicate()
             await proc.wait()
-            if proc.returncode == 0:
+            if proc.returncode == 0 and table is None:
                 print('backup %s-%s.sql done' % (databases, times))
                 break
-            if stderr:
+            elif proc.returncode == 0 and table is not None:
+                print('backup %s.sql done' % (table))
+                break
+            if proc.returncode == 1 and stderr:
                 print(stderr.decode())
-                count -= 1
+            count -= 1
         except:
             print('command not working')
             break
@@ -60,21 +62,20 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
 async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, inputpath, sqlfile=None, table=None):
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
+    if sqlfile is None:
+        SQL_FILE = '{}-{}.sql'.format(databases, times)
+    else:
+        SQL_FILE = sqlfile
+    cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
     while count:
         Query1 = 'drop database IF EXISTS {};'.format(databases)
         Query2 = 'create database IF NOT EXISTS  {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'.format(databases)
         try:
-            connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
-            connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
-            if sqlfile is None:
-                SQL_FILE = '{}-{}.sql'.format(databases, times)
+            if table is None:
+                connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
+                connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
             else:
-                SQL_FILE = sqlfile
-            if table is not None:
-                cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, table, inputpath, SQL_FILE)
-            else:
-                cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
-            print(cmd)
+                pass
             proc = await asyncio.create_subprocess_shell(
                 cmd,
                 stdout=asyncio.subprocess.PIPE,
@@ -84,9 +85,9 @@ async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, 
             if proc.returncode == 0:
                 print('restore {} done'.format(SQL_FILE))
                 break
-            if stderr:
+            if proc.returncode == 1 and stderr:
                 print(stderr.decode())
-                count -= 1
+            count -= 1
         except:
             print('command not working')
             break
