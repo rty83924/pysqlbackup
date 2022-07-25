@@ -35,7 +35,11 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     while count:
-        cmd = 'mysqldump --single-transaction --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+        if table is None:
+            cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+            #cmd = 'mysqldump --single-transaction --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s/%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)        
+        else:    
+            cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
         try:
             proc = await asyncio.create_subprocess_shell(
                 cmd,
@@ -53,20 +57,24 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
             print('command not working')
             break
 
-async def restore_dump(restorehost, restoreuser, restorepwd, restoreport, databases, inputpath, sqlfile=None):
+async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, inputpath, sqlfile=None, table=None):
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     while count:
-        if sqlfile == None:
-            SQL_FILE = '{}-{}.sql'.format(databases, times)
-        else:
-            SQL_FILE = sqlfile
         Query1 = 'drop database IF EXISTS {};'.format(databases)
         Query2 = 'create database IF NOT EXISTS  {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'.format(databases)
         try:
             connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
             connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
-            cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s --database=%s < %s/%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
+            if sqlfile is None:
+                SQL_FILE = '{}-{}.sql'.format(databases, times)
+            else:
+                SQL_FILE = sqlfile
+            if table is not None:
+                cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, table, inputpath, SQL_FILE)
+            else:
+                cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
+            print(cmd)
             proc = await asyncio.create_subprocess_shell(
                 cmd,
                 stdout=asyncio.subprocess.PIPE,
