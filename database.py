@@ -94,9 +94,6 @@ async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, 
 
 
 def delete(inputpath, days):
-    #info = config()
-    #inputpath = info['outputpath']
-    #days = int(info['days'])
     now = time.time()
     days = now - days * 86400
     for f in  os.listdir(inputpath):
