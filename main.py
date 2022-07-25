@@ -33,7 +33,7 @@ async def local(args):
     port = info['port']
     outputpath = info['outputpath']
     databases = info['data'].split(',')
-    days = info['days']
+    days = int(info['days'])
     backup_task = list()
     for data in databases:
         backup_task.append(backup(mysqlhost=mysqlhost, user=user, passwd=passwd, port=port, databases=data, outputpath=outputpath))
@@ -84,6 +84,8 @@ async def cloud(args):
 def command():
     args = cli.parse_args()
     asyncio.run(args.func(args))
+    return args
+    
 if __name__ == '__main__':
     print('version: 1.5.4 laster')
     command()
