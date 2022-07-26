@@ -52,7 +52,7 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
             elif proc.returncode == 0 and table is not None:
                 print('backup %s.sql done' % (table))
                 break
-            if proc.returncode == 1 and stderr:
+            if stderr:
                 print(stderr.decode())
             count -= 1
         except:
@@ -85,7 +85,7 @@ async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, 
             if proc.returncode == 0:
                 print('restore {} done'.format(SQL_FILE))
                 break
-            if proc.returncode == 1 and stderr:
+            if stderr:
                 print(stderr.decode())
             count -= 1
         except:

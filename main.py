@@ -85,7 +85,7 @@ def command():
     args = cli.parse_args()
     asyncio.run(args.func(args))
     return args
-    
+
 if __name__ == '__main__':
-    print('version: 1.5.4 laster')
+    print('version: 2.2 laster')
     command()
