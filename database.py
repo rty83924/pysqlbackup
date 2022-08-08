@@ -35,9 +35,9 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     if table is None:
-        cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+        cmd = 'mysqldump --no-autocommit --skip-extended-insert --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
     else:    
-        cmd = 'mysqldump --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
+        cmd = 'mysqldump --no-autocommit --skip-extended-insert --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
     while count:
         try:
             proc = await asyncio.create_subprocess_shell(
