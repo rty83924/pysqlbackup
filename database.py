@@ -2,8 +2,11 @@ import time
 import os
 import pymysql
 import asyncio
+import contextlib
 
-def connect_sql(hosts,user,passwd,port,query):
+#上下文
+@contextlib.contextmanager
+def connect_sql(hosts,user,passwd,port):
     db = pymysql.connect(
         host = hosts,
         user = user,
@@ -12,21 +15,22 @@ def connect_sql(hosts,user,passwd,port,query):
         port = int(port),
         charset = 'utf8'
     )
-    cursor = db.cursor()
+    cursor = db.cursor(cursor=pymysql.cursors.DictCursor)  #在实例化的时候，将属性cursor设置为pymysql.cursors.DictCursor
     #數據庫操作
     try:
-        cursor.execute(query)
+        yield cursor
         db.commit()
-        #關閉DB
-        db.close()
     except (pymysql.err.OperationalError, pymysql.ProgrammingError, pymysql.InternalError,
             pymysql.IntegrityError, TypeError) as error:
         #取消操作回滾
         db.rollback()
         print(error)
+    finally:
+        cursor.close()
+        db.close()
     #fetchone(): 该方法获取下一个查询结果集。结果集是一个对象
     #獲取所有紀錄
-    return cursor.fetchall()
+    #return cursor.fetchall()
 
 
 async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=None):
@@ -35,9 +39,9 @@ async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=Non
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     if table is None:
-        cmd = 'mysqldump --no-autocommit --skip-extended-insert --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s > %s%s-%s.sql' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
+        cmd = 'mysqldump --extended-insert --no-autocommit --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s | gzip > %s%s-%s.sql.gz' % (mysqlhost, port, user, passwd, databases, outputpath, databases, times)
     else:    
-        cmd = 'mysqldump --no-autocommit --skip-extended-insert --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s > %s/%s.sql' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
+        cmd = 'mysqldump --extended-insert --no-autocommit --set-gtid-purged=OFF --no-tablespaces --quick --hex-blob --skip-triggers --protocol=TCP -h %s -P %s -u%s -p%s --databases %s --tables %s | gzip > %s/%s.sql.gz' % (mysqlhost, port, user, passwd, databases, table, outputpath, table)
     while count:
         try:
             proc = await asyncio.create_subprocess_shell(
@@ -63,34 +67,41 @@ async def restore(restorehost, restoreuser, restorepwd, restoreport, databases, 
     times = time.strftime('%Y%m%d%H', time.localtime())
     count = 3
     if sqlfile is None:
-        SQL_FILE = '{}-{}.sql'.format(databases, times)
+        SQL_FILE = '{}-{}.sql.gz'.format(databases, times)
     else:
         SQL_FILE = sqlfile
-    cmd = 'mysql --protocol=TCP -h %s -P %s -u%s -p%s %s < %s%s' % (restorehost, restoreport, restoreuser, restorepwd, databases, inputpath, SQL_FILE)
+    cmd = f'gunzip < {inputpath}{SQL_FILE} | mysql --protocol=TCP -h {restorehost} -P {restoreport} -u{restoreuser} -p{restorepwd} {databases}'
     while count:
-        Query1 = 'drop database IF EXISTS {};'.format(databases)
-        Query2 = 'create database IF NOT EXISTS  {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'.format(databases)
-        try:
-            if table is None:
-                connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query1)
-                connect_sql(restorehost,restoreuser,restorepwd,restoreport,Query2)
-            else:
-                pass
-            proc = await asyncio.create_subprocess_shell(
-                cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE)
-            stdout, stderr = await proc.communicate()
-            await proc.wait()
-            if proc.returncode == 0:
-                print('restore {} done'.format(SQL_FILE))
+        with connect_sql(restorehost,restoreuser,restorepwd,restoreport) as cursor:
+            try:
+                cursor.execute('SET @OLD_AUTOCOMMIT=@@AUTOCOMMIT, AUTOCOMMIT = 0;')
+                cursor.execute('SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS = 0;')
+                cursor.execute('SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS = 0;')
+                if table is None:
+                    cursor.execute('drop database IF EXISTS {};'.format(databases))
+                    cursor.execute('create database IF NOT EXISTS  {} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'.format(databases))
+                else:
+                    pass
+                proc = await asyncio.create_subprocess_shell(
+                    cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE)
+                stdout, stderr = await proc.communicate()
+                await proc.wait()
+                if proc.returncode == 0:
+                    print('restore {} done'.format(SQL_FILE))
+                    break
+                if stderr:
+                    print(stderr.decode())
+                count -= 1
+            except:
+                print('command not working')
                 break
-            if stderr:
-                print(stderr.decode())
-            count -= 1
-        except:
-            print('command not working')
-            break
+            finally:
+                cursor.execute('SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;')
+                cursor.execute('SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;')
+                cursor.execute('SET AUTOCOMMIT = @OLD_AUTOCOMMIT;')
+                cursor.execute('COMMIT;')
 
 
 def delete(inputpath, days):

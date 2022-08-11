@@ -45,14 +45,6 @@ async def local(args):
 @subcommand()
 async def cloud(args):
     info = os.environ
-    try:
-        if sys.argv[2] == 'local':
-            info = config(local_config=True)
-        else:
-            print('please enter # python main.py local')
-            exit(1)
-    except IndexError:
-        info = os.environ
     threads = int(args.thread)
     mysqlhost = info['mysqlhost']
     user = info['user']
@@ -87,5 +79,5 @@ def command():
     return args
 
 if __name__ == '__main__':
-    print('version: 2.2 laster')
+    print('version: 2.5')
     command()
