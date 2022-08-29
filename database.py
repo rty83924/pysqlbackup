@@ -34,6 +34,7 @@ def connect_sql(hosts,user,passwd,port):
 
 
 async def backup(mysqlhost, user, passwd, port, databases, outputpath, table=None):
+    print(databases)
     if not os.path.isdir(outputpath):
         os.makedirs(outputpath)
     times = time.strftime('%Y%m%d%H', time.localtime())

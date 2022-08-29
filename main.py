@@ -25,6 +25,7 @@ def subcommand(args=[], parent=subparsers, parents=[]):
 
 @subcommand()
 async def local(args):
+    start = time.time()
     info = config(local_config=True)
     threads = int(args.thread)
     mysqlhost = info['mysqlhost']
@@ -40,6 +41,8 @@ async def local(args):
     #await asyncio.gather(*backup_task, asyncio.sleep(0.1))
     await gather_with_concurrency(threads, *backup_task, asyncio.sleep(0.1))
     delete(inputpath=outputpath, days=days)
+    end = time.time()
+    print(end - start)
 
 
 @subcommand()
@@ -79,5 +82,5 @@ def command():
     return args
 
 if __name__ == '__main__':
-    print('version: 2.5')
+    print('version: 2.5.2')
     command()
