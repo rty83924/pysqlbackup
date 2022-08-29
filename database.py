@@ -108,16 +108,16 @@ def delete(inputpath, days):
     now = time.time()
     days = now - days * 86400
     for f in  os.listdir(inputpath):
-        if os.path.getatime(os.path.join(inputpath, f)) < days:
-            if os.path.isfile(os.path.join(inputpath, f)):
-                print('delete {}'.format(f))
-                os.remove(os.path.join(inputpath, f))
-
-
+        try: 
+            if os.path.getatime(os.path.join(inputpath, f)) < days:
+                if os.path.isfile(os.path.join(inputpath, f)):
+                    print('delete {}'.format(f))
+                    os.remove(os.path.join(inputpath, f))
+        except Exception as e:
+            print(e)
 
 if __name__ == '__main__':
     #outputpath = '{}/backup'.format(a)
-    backup()
-    #dump()
-    delete()
+    #backup()
+    delete(inputpath='/var/backup/SQL', days=3)
 
