@@ -33,7 +33,7 @@ async def local(args):
     passwd = info['passwd']
     port = info['port']
     outputpath = info['outputpath']
-    databases = info['data'].split(',')
+    databases = info['data']
     days = int(info['days'])
     backup_task = list()
     for data in databases:
