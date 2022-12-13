@@ -6,7 +6,7 @@ restorehost: '10.8.144.29'
 restoreuser: 'dump'
 restorepwd: 'Jc-12345'
 restoreport: '3306'
-outputpath: '/home/jcg/filestore/SQL_BACKUP'
+outputpath: '/home/jcg/filestore/SQL_BACKUP/'
 days: '3'
 table: 'electronic_game_lobby/game'
 data: 
